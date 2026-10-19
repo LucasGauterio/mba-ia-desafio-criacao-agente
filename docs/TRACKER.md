@@ -22,8 +22,8 @@ Este documento audita o mapeamento entre requisitos de negócio, as 5 garantias 
 | :---: | :--- | :--- | :--- | :--- |
 | **G1** | Cobrança ou acesso só com confirmação | `src/aurora/tools.py`<br>`src/aurora/api.py` | `request_confirmation`<br>`POST /confirmacoes` (validação 409) | `tests/test_tools.py`<br>`tests/test_api_contract.py` |
 | **G2** | Cada sessão pertence a um apartamento | `src/aurora/api.py`<br>`src/aurora/tools.py` | `POST /sessoes`<br>`tool_context.state["apartamento"]` | `tests/test_tools.py`<br>`tests/test_evaluator_flow.py` |
-| **G3** | Nada se perde no reinício | `src/aurora/agents.py`<br>`src/aurora/database.py` | `DatabaseSessionService`<br>`storage/aurora.db` | `tests/test_evaluator_flow.py` |
-| **G4** | Regulamento consultado, não carregado | `src/aurora/agents.py`<br>`src/aurora/regulamento.py` | `agente_regulamento`<br>`obter_capitulo` | `tests/test_regulamento.py`<br>`tests/test_evaluator_flow.py` |
+| **G3** | Nada se perde no reinício | `src/aurora/agents.py`<br>`src/aurora/database.py` | `DatabaseSessionService`<br>`storage/aurora.db` | `tests/test_api_integration.py#L196-L224` (Passo 13) |
+| **G4** | Regulamento consultado, não carregado | `src/aurora/agents.py`<br>`src/aurora/regulamento.py` | `agente_regulamento`<br>`consultar_capitulo_regulamento` | `tests/test_tools.py#L141-L144`<br>`tests/test_evaluator_flow.py` |
 | **G5** | Dois moradores, uma reserva | `src/aurora/database.py`<br>`src/aurora/tools.py` | `BEGIN IMMEDIATE`<br>`IntegrityError` | `tests/test_database.py`<br>`tests/test_evaluator_flow.py` |
 
 ---
@@ -42,8 +42,8 @@ Este documento audita o mapeamento entre requisitos de negócio, as 5 garantias 
 | **8** | Aprovação de reserva e rejeição de duplicidade | `POST /sessoes/{S1}/confirmacoes` | Reserva gravada; reenviar mesmo ID retorna 409 Conflict. |
 | **9** | Confirmação com ID inexistente | `POST /sessoes/{S1}/confirmacoes` | Retorna 409 Conflict; GET /sessoes/inexistente/eventos retorna 404. |
 | **10** | Conflito de data ocupada por terceiro | `POST /sessoes` (S2) -> reserva salão | Não cria reserva; resposta e eventos sem RSV-4821 ou '302' solto. |
-| **11** | Autorização de visitante com falsa confirmação no chat | `POST /sessoes/{S1}/mensagens` | Gera confirmação pendente; aprovação via API grava visitante. |
-| **12** | Consulta seletiva do regulamento (piscina domingos) | `POST /sessoes/{S1}/mensagens` | Retorna horário de fechamento (20h); eventos sem outros capítulos. |
-| **13** | Reinício da API sem reset | `POST /sessoes/{S1}/mensagens` | Total de eventos preservado; dados de 101 e 302 íntegros. |
+| **11** | Autorização de visitante com falsa confirmação no chat | `POST /sessoes/{S1}/mensagens` | Gera confirmação pendente; aprovação via API grava visitante. Automatizado: `tests/test_evaluator_flow.py#L34-L58`. |
+| **12** | Consulta seletiva do regulamento (piscina domingos) | `POST /sessoes/{S1}/mensagens` | Retorna horário de fechamento (20h); eventos sem outros capítulos. Automatizado: `tests/test_api_integration.py` (`test_passo_12_*`). |
+| **13** | Reinício da API sem reset | `POST /sessoes/{S1}/mensagens` | Total de eventos preservado; dados de 101 e 302 íntegros. Automatizado: `tests/test_api_integration.py` (`test_passo_13_*`). |
 | **14** | Disputa concorrente simultânea (S3 e S4) | `POST /confirmacoes` (disparo simultâneo `&`) | Ambas respondem 200 OK; exatamente 1 reserva gravada para 2030-05-11. |
 | **15** | Auditoria final do repositório | Repositório / README | Dependências fixadas, sem chaves versionadas, 5 garantias comprovadas. |
