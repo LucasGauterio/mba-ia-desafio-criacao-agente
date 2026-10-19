@@ -128,6 +128,6 @@ uv run python -m aurora.cli reset
 # 3. Executar o servidor FastAPI
 uv run python -m aurora.cli run
 
-# 4. Executar suíte de testes com cobertura
+# 4. Executar suíte de testes com cobertura (pytest-cov já configurado em pyproject.toml)
 uv run pytest
 ```
