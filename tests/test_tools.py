@@ -138,6 +138,42 @@ def test_autorizar_visitante_fluxo_confirmacao():
         assert cur.fetchone() is not None
 
 
+def test_listar_areas_comuns_retorna_as_tres_areas():
+    """SI-02-01: Lista todas as áreas comuns com suas respectivas taxas."""
+    areas = listar_areas_comuns()
+    taxas = {a["id"]: a["taxa"] for a in areas}
+    assert taxas == {"quadra": 0.0, "churrasqueira": 80.0, "salao-de-festas": 150.0}
+
+
+def test_consultar_minhas_reservas_filtra_por_apartamento_da_sessao():
+    """SI-02-01 & Garantia 2: Retorna apenas as reservas do apartamento da sessão atual."""
+    ctx_101 = MagicMock()
+    ctx_101.state = {"apartamento": "101"}
+    reservas_101 = consultar_minhas_reservas(ctx_101)
+    assert len(reservas_101) == 1
+    assert reservas_101[0]["codigo"] == "RSV-1377"
+    assert reservas_101[0]["area"] == "quadra"
+
+    ctx_302 = MagicMock()
+    ctx_302.state = {"apartamento": "302"}
+    reservas_302 = consultar_minhas_reservas(ctx_302)
+    assert len(reservas_302) == 1
+    assert reservas_302[0]["codigo"] == "RSV-4821"
+
+
+def test_listar_meus_visitantes_filtra_por_apartamento_da_sessao():
+    """SI-02-05 & Garantia 2: Retorna apenas os visitantes autorizados pelo apartamento da sessão."""
+    ctx_302 = MagicMock()
+    ctx_302.state = {"apartamento": "302"}
+    visitantes_302 = listar_meus_visitantes(ctx_302)
+    assert len(visitantes_302) == 1
+    assert visitantes_302[0]["nome"] == "Marina Duarte"
+
+    ctx_101 = MagicMock()
+    ctx_101.state = {"apartamento": "101"}
+    assert listar_meus_visitantes(ctx_101) == []
+
+
 def test_consultar_capitulo_regulamento_granular():
     """Garantia 4: Consulta de regulamento retorna apenas o capítulo solicitado."""
     # Capítulo 4: Piscina
