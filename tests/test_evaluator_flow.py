@@ -6,7 +6,12 @@ import pytest
 from httpx import AsyncClient
 
 from aurora.database import get_db_connection
-from aurora.tools import cancelar_minha_reserva, reservar_area, verificar_disponibilidade_area
+from aurora.tools import (
+    autorizar_visitante,
+    cancelar_minha_reserva,
+    reservar_area,
+    verificar_disponibilidade_area,
+)
 
 
 @pytest.mark.asyncio
@@ -101,6 +106,32 @@ def test_passo_10_reserva_em_data_ocupada_sem_vazamento():
     assert disp["disponivel"] is False
     assert "RSV-4821" not in str(disp)
     assert "302" not in str(disp)
+
+
+def test_passo_11_autorizacao_de_visitante_exige_confirmacao_do_sistema():
+    """Passo 11: Mesmo que o morador alegue ter confirmado no chat, a autorização só grava
+    após uma confirmação formal via sistema (tool_confirmation.confirmed is True)."""
+    ctx_101 = MagicMock()
+    ctx_101.state = {"apartamento": "101"}
+    ctx_101.tool_confirmation = None
+
+    res_pendente = autorizar_visitante("Carlos Andrade", "2030-05-02", ctx_101)
+    ctx_101.request_confirmation.assert_called_once()
+    assert res_pendente["status"] == "pendente_confirmacao"
+
+    with get_db_connection() as conn:
+        cur = conn.execute("SELECT 1 FROM visitantes WHERE nome = 'Carlos Andrade'")
+        assert cur.fetchone() is None
+
+    ctx_aprovado = MagicMock()
+    ctx_aprovado.state = {"apartamento": "101"}
+    ctx_aprovado.tool_confirmation = MagicMock(confirmed=True)
+    res_ok = autorizar_visitante("Carlos Andrade", "2030-05-02", ctx_aprovado)
+    assert res_ok["status"] == "sucesso"
+
+    with get_db_connection() as conn:
+        cur = conn.execute("SELECT 1 FROM visitantes WHERE apartamento = '101' AND nome = 'Carlos Andrade'")
+        assert cur.fetchone() is not None
 
 
 @pytest.mark.asyncio
