@@ -1,17 +1,21 @@
 ---
 name: plan-phase
-description: Planeja e estrutura uma nova fase ou sub-funcionalidade de API e Agentes, gerando contexto e validação em docs/phases/.
+description: Executa o pipeline completo de planejamento de uma fase (research → plan-context → plan-validate → plan-resolve → plan-build) em sequência para phase-NN.
 ---
 
-# plan-phase: Planejamento de Fase de API e Agentes
+# plan-phase: Pipeline Completo de Planejamento de Fase
 
 ## Objetivo
-Estruturar o planejamento técnico de uma fase específica (ex: Fase 01, 02, etc.) em `docs/phases/phase-NN-{slug}/`.
+Atalho que executa, em sequência, as 5 etapas formais do pipeline de planejamento para uma fase específica (ex: Fase 01, 02, etc.), sem duplicar a lógica de cada etapa.
 
-## Arquivos Gerados por Fase
-1. `CONTEXT.md`: Contexto consolidado da fase, objetivos, dependências e restrições.
-2. `validation.md`: Checklist arquitetural e validação de consistência (`clean` ou `dirty`).
-3. `phase-NN-{slug}.md`: Plano de implementação com Step Implementations (SIs) atômicos, links para os arquivos-alvo (`src/aurora/arquivo.py#Lnn`) e critérios de entrega.
+## Etapas (nesta ordem)
+1. **`research`** → `docs/decisions/technical-decisions-phase-NN-{slug}.md`.
+2. **`plan-context`** → `docs/phases/phase-NN-{slug}/CONTEXT.md`.
+3. **`plan-validate`** → `docs/phases/phase-NN-{slug}/validation.md` (`clean` ou `dirty`).
+4. **`plan-resolve`** → fecha as pendências de `validation.md` até `clean`, ou documenta a limitação aceita em `docs/decisions/`.
+5. **`plan-build`** → `docs/phases/phase-NN-{slug}/phase-NN-{slug}.md` (Step Implementations + Entregáveis) e `library-refs.md`.
+
+Depois de uma fase já implementada, `plan-phase` pode ser invocada novamente para reauditar (repete `plan-validate` → `plan-resolve` com o estado atual do código).
 
 ## Fases Oficiais do Projeto
 - **Fase 01**: `phase-01-core-setup` (Ambiente uv, Schema SQLite, Seeds e CLI de Reset)
