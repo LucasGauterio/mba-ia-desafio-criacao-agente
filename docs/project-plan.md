@@ -1,7 +1,7 @@
 # Plano Mestre de Implementação (Greenfield Project Plan) — Residencial Aurora
 
 ## 1. Sumário Executivo
-Este documento define o roteiro sequencial de implementação do assistente virtual do Residencial Aurora. O projeto é desenvolvido do zero (*greenfield*), partindo unicamente dos arquivos estáticos em [`dados/`](../dados), e dividido em cinco fases atômicas orientadas a testes e validação contínua.
+Este documento define o roteiro sequencial de implementação do assistente virtual do Residencial Aurora. O projeto é desenvolvido do zero (*greenfield*), partindo unicamente dos arquivos estáticos em [`dados/`](../dados), e dividido em seis fases atômicas orientadas a testes e validação contínua — as cinco fases de implementação do desafio, mais a Fase 06 de execução automatizada do `TEST_PLAN.md` contra a API real com LLM real.
 
 ---
 
@@ -13,6 +13,7 @@ flowchart LR
     P2 --> P3["Fase 03: Agentes ADK v2 & Regulamento"]
     P3 --> P4["Fase 04: API FastAPI & Confirmações HTTP"]
     P4 --> P5["Fase 05: Suíte E2E & Fluxo do Avaliador"]
+    P5 --> P6["Fase 06: Execução do TEST_PLAN com LLM real"]
 ```
 
 ---
@@ -47,7 +48,7 @@ flowchart LR
 - **Entregáveis**:
   - `src/aurora/regulamento.py`: Parser granular `obter_capitulo(numero: int)`.
   - `src/aurora/agents.py`: Definição de `recepcao_aurora`, especialistas, App e Runner com `DatabaseSessionService`.
-  - `tests/test_regulamento.py`: Teste de extração por capítulo e isolamento de contexto.
+  - `tests/test_tools.py#L141-L150`: Teste de extração granular por capítulo (não há arquivo `test_regulamento.py` dedicado).
 - **Documentação da Fase**: [`docs/phases/phase-03-adk-agents-tools/phase-03-adk-agents-tools.md`](phases/phase-03-adk-agents-tools/phase-03-adk-agents-tools.md)
 
 ### Fase 04: API FastAPI & Contrato HTTP
@@ -63,3 +64,11 @@ flowchart LR
   - `tests/test_evaluator_flow.py`: Automação completa dos Passos 1 a 15.
   - `docs/TRACKER.md`: Rastreabilidade final 100% preenchida.
 - **Documentação da Fase**: [`docs/phases/phase-05-e2e-evaluator-validation/phase-05-e2e-evaluator-validation.md`](phases/phase-05-e2e-evaluator-validation/phase-05-e2e-evaluator-validation.md)
+
+### Fase 06: Execução Automatizada do TEST_PLAN.md
+- **Objetivo**: Automatizar os 18 casos de teste (CT-01 a CT-18) de [`TEST_PLAN.md`](../TEST_PLAN.md) contra a API real com o LLM real (Gemini), incluindo reinício real do processo (CT-13, Garantia 3) e disputa concorrente real (CT-14) — complementar à Fase 05, que usa apenas mocks.
+- **Entregáveis**:
+  - `scripts/run_test_plan.sh`: script de automação ponta a ponta dos 18 CTs.
+  - Correção do bug real descoberto na primeira execução (`500` em `POST /mensagens` após a primeira chamada ao Gemini no processo) — **pendente**.
+- **Status**: `dirty` — ver pendências em [`docs/phases/phase-06-test-plan-execution/validation.md`](phases/phase-06-test-plan-execution/validation.md).
+- **Documentação da Fase**: [`docs/phases/phase-06-test-plan-execution/phase-06-test-plan-execution.md`](phases/phase-06-test-plan-execution/phase-06-test-plan-execution.md)

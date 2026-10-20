@@ -23,3 +23,4 @@ Depois de uma fase já implementada, `plan-phase` pode ser invocada novamente pa
 - **Fase 03**: `phase-03-adk-agents-tools` (Topologia multiagente ADK, subagents, regulamento)
 - **Fase 04**: `phase-04-fastapi-contract` (API FastAPI, contrato REST, streaming de eventos e confirmações)
 - **Fase 05**: `phase-05-e2e-evaluator-validation` (Testes ponta a ponta e auditoria dos 15 passos do avaliador)
+- **Fase 06**: `phase-06-test-plan-execution` (Automação e execução completa do TEST_PLAN.md contra a API real com LLM real)
