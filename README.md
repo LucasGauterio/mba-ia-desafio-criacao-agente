@@ -316,3 +316,57 @@ curl -s http://localhost:8000/apartamentos/101/reservas
 # Confere o visitante inicial do apartamento 302 (Marina Duarte)
 curl -s http://localhost:8000/apartamentos/302/visitantes
 ```
+
+---
+
+## 4. Como Testar
+
+Há duas camadas de teste neste projeto: a suíte automatizada (unitária + integração), que **não depende de LLM real**, e o teste manual de ponta a ponta contra a aplicação em execução, que **exercita o LLM de verdade**.
+
+### 4.1. Testes Automatizados (Unitários e de Integração)
+
+Não exigem `GOOGLE_API_KEY`/`GEMINI_API_KEY` nem a API em execução — rodam isoladamente contra um banco SQLite local.
+
+```bash
+# Sincroniza dependências (inclui pytest, pytest-asyncio, pytest-cov, httpx)
+uv sync
+
+# Executa toda a suíte com relatório de cobertura (configurado em pyproject.toml)
+uv run pytest
+
+# Executa apenas um arquivo ou teste específico
+uv run pytest tests/test_tools.py -k test_reservar_area
+```
+
+| Arquivo | Camada | O que valida |
+| :--- | :--- | :--- |
+| `tests/test_database.py` | Unitário | Schema, seed inicial a partir de `dados/`, constraint `UNIQUE(area, data)` e histórico perpétuo de códigos (RN05). |
+| `tests/test_tools.py` | Unitário | As 5 Garantias nas *tools* determinísticas, chamadas diretamente com `tool_context` mockado (`unittest.mock.MagicMock`) — sem passar pela API ou pelo LLM. |
+| `tests/test_api_contract.py` | Integração (contrato) | Status codes e formato das rotas HTTP: `201`, `404`, `409`. |
+| `tests/test_api_integration.py` | Integração | Caminhos de **sucesso** de `POST /mensagens`, `POST /confirmacoes` e `GET /eventos`, mockando a fronteira do `Runner` com objetos reais `google.adk.events.Event` (sem chamar o LLM). |
+| `tests/test_evaluator_flow.py` | Integração | Simulação determinística dos 15 passos do Fluxo do Avaliador, chamando as *tools* e as rotas de leitura. |
+
+> **Por quê a suíte automatizada não chama o LLM real**: as garantias críticas de negócio são implementadas em código Python determinístico, não em comportamento de modelo — por isso podem e devem ser verificadas sem depender de uma chamada de rede não-determinística. Essa decisão, e sua limitação conhecida (o roteamento real via `transfer_to_agent` não é verificado automaticamente), está documentada em [`docs/decisions/technical-decisions-phase-05-e2e-evaluator-validation.md`](docs/decisions/technical-decisions-phase-05-e2e-evaluator-validation.md).
+
+### 4.2. Teste Completo da Aplicação (ponta a ponta, com LLM real)
+
+Para validar a aplicação **de fato**, incluindo o roteamento `transfer_to_agent` e as respostas reais dos agentes, é preciso subir a API com uma chave de Gemini válida e conversar com ela via HTTP:
+
+```bash
+# 1. Garanta que o .env tem GOOGLE_API_KEY/GEMINI_API_KEY preenchida
+# 2. Restaure o estado inicial dos dados
+uv run python -m aurora.cli reset
+
+# 3. Suba a API em outro terminal
+uv run python -m aurora.cli run
+
+# 4. Crie uma sessão para o apartamento 101
+curl -s -X POST http://localhost:8000/sessoes -H "Content-Type: application/json" \
+  -d '{"apartamento": "101"}'
+
+# 5. Envie uma mensagem real (substitua {SESSION_ID} pelo session_id retornado acima)
+curl -s -X POST http://localhost:8000/sessoes/{SESSION_ID}/mensagens -H "Content-Type: application/json" \
+  -d '{"texto": "Quero reservar o salão de festas para o dia 2030-06-01"}'
+```
+
+O roteiro completo com os **15 passos do Fluxo do Avaliador** — incluindo confirmação de cobrança, autorização de visitante, consulta ao regulamento, reinício sem perda de dados e disputa concorrente — está detalhado passo a passo, com os comandos `curl` exatos e as respostas esperadas, em [`TEST_PLAN.md`](./TEST_PLAN.md).
