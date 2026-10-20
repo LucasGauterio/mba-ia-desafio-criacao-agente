@@ -360,9 +360,12 @@ Para validar a aplicação **de fato**, incluindo o roteamento `transfer_to_agen
 
 # Para pular o kill/restart real do Passo 13 (ex.: ambientes onde matar o processo é problemático):
 SKIP_RESTART=1 ./scripts/run_test_plan.sh
+
+# Chave com quota baixa (travando com "status 000"/timeout)? Aumente a espera entre chamadas (padrão: 5s):
+REQUEST_DELAY_SECONDS=10 ./scripts/run_test_plan.sh
 ```
 
-> **Limitação conhecida**: a execução completa dos 18 casos em sequência rápida pode travar a partir de certo ponto por **rate limiting/quota da chave Gemini configurada** (não um bug de código) — `POST /mensagens` para de responder dentro do timeout sem nenhuma exceção no servidor. Se isso ocorrer, aguarde a janela de limite de taxa resetar e rode novamente, ou use uma chave com quota maior. Detalhes em [`docs/decisions/technical-decisions-phase-06-test-plan-execution.md`](docs/decisions/technical-decisions-phase-06-test-plan-execution.md).
+> **Limitação conhecida**: mesmo com a espera configurável (`REQUEST_DELAY_SECONDS`) entre chamadas, a execução completa dos 18 casos ainda pode travar por **rate limiting/quota da chave Gemini configurada** (não um bug de código) — `POST /mensagens` para de responder dentro do timeout sem nenhuma exceção no servidor. Se isso ocorrer, aumente `REQUEST_DELAY_SECONDS`, aguarde a janela de limite de taxa resetar, ou use uma chave com quota maior. Detalhes em [`docs/decisions/technical-decisions-phase-06-test-plan-execution.md`](docs/decisions/technical-decisions-phase-06-test-plan-execution.md).
 
 **Manual** — para inspecionar passo a passo com `curl`:
 

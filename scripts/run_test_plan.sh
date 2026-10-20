@@ -10,7 +10,9 @@
 #
 # Uso:
 #   ./scripts/run_test_plan.sh
-#   SKIP_RESTART=1 ./scripts/run_test_plan.sh   # pula o kill/restart real do CT-13
+#   SKIP_RESTART=1 ./scripts/run_test_plan.sh         # pula o kill/restart real do CT-13
+#   REQUEST_DELAY_SECONDS=8 ./scripts/run_test_plan.sh  # espera maior entre chamadas (chave com quota menor)
+#   REQUEST_DELAY_SECONDS=0 ./scripts/run_test_plan.sh  # sem espera (chave com quota alta)
 #
 set -u
 
@@ -26,6 +28,10 @@ fi
 
 AURORA_PORT="${AURORA_PORT:-8000}"
 BASE_URL="http://127.0.0.1:${AURORA_PORT}"
+# SI-06-06: espera entre chamadas que acionam o LLM real, para nao estourar a
+# quota/rate limit da chave Gemini configurada (ver docs/decisions/
+# technical-decisions-phase-06-test-plan-execution.md). Ajustavel via env var.
+REQUEST_DELAY_SECONDS="${REQUEST_DELAY_SECONDS:-5}"
 LOG_DIR="$REPO_ROOT/.test_plan_run"
 mkdir -p "$LOG_DIR"
 API_LOG="$LOG_DIR/api.log"
@@ -109,6 +115,13 @@ TMP_BODY="$LOG_DIR/last_response.json"
 http() {
   # uso: http METODO PATH [JSON_BODY]
   local method="$1" path="$2" data="${3:-}"
+  case "$path" in
+    */mensagens|*/confirmacoes)
+      if [ "$REQUEST_DELAY_SECONDS" != "0" ]; then
+        sleep "$REQUEST_DELAY_SECONDS"
+      fi
+      ;;
+  esac
   if [ -n "$data" ]; then
     RESP_STATUS=$(curl -s -m 60 -o "$TMP_BODY" -w '%{http_code}' -X "$method" "$BASE_URL$path" -H "Content-Type: application/json" -d "$data")
   else
@@ -447,6 +460,9 @@ ct14() {
   assert_true "[ -n \"$conf_s3\" ] && [ \"$conf_s3\" != 'None' ]" "S3 tem confirmacao pendente"
   assert_true "[ -n \"$conf_s4\" ] && [ \"$conf_s4\" != 'None' ]" "S4 tem confirmacao pendente"
 
+  if [ "$REQUEST_DELAY_SECONDS" != "0" ]; then
+    sleep "$REQUEST_DELAY_SECONDS"
+  fi
   info "Disparando as duas aprovacoes simultaneamente..."
   local body_s3 body_s4 tmp_s3 tmp_s4 status_s3 status_s4
   body_s3=$(json_body_confirmacao "$conf_s3" "true")

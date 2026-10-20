@@ -15,7 +15,7 @@ Bibliotecas decididas nesta fase: ver [`library-refs.md`](library-refs.md).
 3. **SI-06-03**: Corrigir o bug do próprio script: `start_api()` reabria `api.log` com `>` (truncando) a cada reinício. **Concluído**: trunca uma única vez no início da execução, `>>` (append) em cada restart.
 4. **SI-06-04**: Executar [`scripts/run_test_plan.sh`](../../../scripts/run_test_plan.sh) do início ao fim (CT-01 a CT-18) sem falhas contra a API real. **Parcialmente concluído** — uma execução completa real do usuário rodou os 18 CTs sem travar por rate limiting, mas revelou um bug real (`reservar_area` não resolvia o nome legível da área), já corrigido e validado isoladamente; falta reconfirmar a rodada completa 18/18 após a correção.
 5. **SI-06-05**: Atualizar [`docs/TRACKER.md`](../../TRACKER.md) com a evidência de execução real (distinta da suíte mockada da Fase 05). **Pendente.**
-6. **SI-06-06** (melhoria, não crítica): adicionar espera configurável entre chamadas em `scripts/run_test_plan.sh` para tornar a execução completa reprodutível independentemente da quota da chave. **Pendente.**
+6. **SI-06-06**: adicionar espera configurável entre chamadas em `scripts/run_test_plan.sh` para tornar a execução completa reprodutível independentemente da quota da chave. **Concluído**: `REQUEST_DELAY_SECONDS` (padrão 5s) aplicado antes de toda chamada a `/mensagens`/`/confirmacoes` (via `http()`) e antes do disparo concorrente do CT-14.
 
 ## Entregáveis e Critérios de Conclusão
 - [x] Script `run_test_plan.sh` criado, com sintaxe válida (`bash -n`) e cobrindo os 18 CTs do `TEST_PLAN.md`.
