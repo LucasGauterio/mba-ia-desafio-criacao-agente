@@ -111,7 +111,12 @@ def extrair_confirmacoes_pendentes(events: list) -> List[Dict[str, Any]]:
             fn_call = getattr(part, "function_call", None)
             if fn_call and fn_call.name == "adk_request_confirmation":
                 args = fn_call.args or {}
-                payload = args.get("payload") if isinstance(args.get("payload"), dict) else args
+                # O ADK real encapsula o payload em args["toolConfirmation"]["payload"],
+                # nao em args["payload"] diretamente (confirmado via GET /eventos ao vivo).
+                tool_confirmation = args.get("toolConfirmation")
+                payload = tool_confirmation.get("payload") if isinstance(tool_confirmation, dict) else None
+                if not isinstance(payload, dict):
+                    payload = args.get("payload") if isinstance(args.get("payload"), dict) else args
                 chamadas[fn_call.id] = {
                     "id": fn_call.id,
                     "acao": payload.get("acao", "confirmar_acao"),

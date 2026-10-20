@@ -36,9 +36,13 @@ async def test_post_mensagens_sucesso_extrai_confirmacao_pendente(client: AsyncC
                         id="call-res-1",
                         name="adk_request_confirmation",
                         args={
-                            "payload": {
-                                "acao": "reservar_area",
-                                "detalhes": {"area": "salao-de-festas", "data": "2030-06-01"},
+                            "toolConfirmation": {
+                                "hint": "Reserva do Salão de festas para 2030-06-01 sujeita à taxa.",
+                                "confirmed": False,
+                                "payload": {
+                                    "acao": "reservar_area",
+                                    "detalhes": {"area": "salao-de-festas", "data": "2030-06-01"},
+                                },
                             }
                         },
                     )
@@ -84,9 +88,13 @@ async def test_post_confirmacoes_aprovacao_finaliza_pendencia_e_bloqueia_repetic
                         id="call-res-2",
                         name="adk_request_confirmation",
                         args={
-                            "payload": {
-                                "acao": "reservar_area",
-                                "detalhes": {"area": "churrasqueira", "data": "2030-06-02"},
+                            "toolConfirmation": {
+                                "hint": "Reserva da churrasqueira para 2030-06-02 sujeita à taxa.",
+                                "confirmed": False,
+                                "payload": {
+                                    "acao": "reservar_area",
+                                    "detalhes": {"area": "churrasqueira", "data": "2030-06-02"},
+                                },
                             }
                         },
                     )
