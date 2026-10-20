@@ -350,23 +350,35 @@ uv run pytest tests/test_tools.py -k test_reservar_area
 
 ### 4.2. Teste Completo da Aplicação (ponta a ponta, com LLM real)
 
-Para validar a aplicação **de fato**, incluindo o roteamento `transfer_to_agent` e as respostas reais dos agentes, é preciso subir a API com uma chave de Gemini válida e conversar com ela via HTTP:
+Para validar a aplicação **de fato**, incluindo o roteamento `transfer_to_agent` e as respostas reais dos agentes, é preciso uma chave de Gemini válida em `.env` (`GOOGLE_API_KEY`/`GEMINI_API_KEY`). Há duas formas:
+
+**Automatizada (recomendado)** — [`scripts/run_test_plan.sh`](./scripts/run_test_plan.sh) executa e valida os 18 casos de teste de [`TEST_PLAN.md`](./TEST_PLAN.md) de ponta a ponta: reset, sobe a API, cria sessões, envia as mensagens reais, aprova/nega confirmações, reinicia o processo de verdade (Passo 13) e dispara a disputa concorrente real (Passo 14) — sem nenhum mock.
 
 ```bash
-# 1. Garanta que o .env tem GOOGLE_API_KEY/GEMINI_API_KEY preenchida
-# 2. Restaure o estado inicial dos dados
+./scripts/run_test_plan.sh
+
+# Para pular o kill/restart real do Passo 13 (ex.: ambientes onde matar o processo é problemático):
+SKIP_RESTART=1 ./scripts/run_test_plan.sh
+```
+
+> **Limitação conhecida**: a execução completa dos 18 casos em sequência rápida pode travar a partir de certo ponto por **rate limiting/quota da chave Gemini configurada** (não um bug de código) — `POST /mensagens` para de responder dentro do timeout sem nenhuma exceção no servidor. Se isso ocorrer, aguarde a janela de limite de taxa resetar e rode novamente, ou use uma chave com quota maior. Detalhes em [`docs/decisions/technical-decisions-phase-06-test-plan-execution.md`](docs/decisions/technical-decisions-phase-06-test-plan-execution.md).
+
+**Manual** — para inspecionar passo a passo com `curl`:
+
+```bash
+# 1. Restaure o estado inicial dos dados
 uv run python -m aurora.cli reset
 
-# 3. Suba a API em outro terminal
+# 2. Suba a API em outro terminal
 uv run python -m aurora.cli run
 
-# 4. Crie uma sessão para o apartamento 101
+# 3. Crie uma sessão para o apartamento 101
 curl -s -X POST http://localhost:8000/sessoes -H "Content-Type: application/json" \
   -d '{"apartamento": "101"}'
 
-# 5. Envie uma mensagem real (substitua {SESSION_ID} pelo session_id retornado acima)
+# 4. Envie uma mensagem real (substitua {SESSION_ID} pelo session_id retornado acima)
 curl -s -X POST http://localhost:8000/sessoes/{SESSION_ID}/mensagens -H "Content-Type: application/json" \
   -d '{"texto": "Quero reservar o salão de festas para o dia 2030-06-01"}'
 ```
 
-O roteiro completo com os **15 passos do Fluxo do Avaliador** — incluindo confirmação de cobrança, autorização de visitante, consulta ao regulamento, reinício sem perda de dados e disputa concorrente — está detalhado passo a passo, com os comandos `curl` exatos e as respostas esperadas, em [`TEST_PLAN.md`](./TEST_PLAN.md).
+O roteiro completo com os **18 casos de teste** (os 15 passos do Fluxo do Avaliador + 3 cenários de borda) — incluindo confirmação de cobrança, autorização de visitante, consulta ao regulamento, reinício sem perda de dados e disputa concorrente — está detalhado passo a passo, com os comandos `curl` exatos e as respostas esperadas, em [`TEST_PLAN.md`](./TEST_PLAN.md).
