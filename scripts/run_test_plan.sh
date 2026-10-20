@@ -28,6 +28,10 @@ AURORA_PORT="${AURORA_PORT:-8000}"
 BASE_URL="http://127.0.0.1:${AURORA_PORT}"
 LOG_DIR="$REPO_ROOT/.test_plan_run"
 mkdir -p "$LOG_DIR"
+API_LOG="$LOG_DIR/api.log"
+# Trunca uma unica vez no inicio da execucao; start_api() so faz append a partir
+# daqui, para que um restart (CT-13) nao destrua o log/traceback da instancia anterior.
+: > "$API_LOG"
 
 IS_WINDOWS=0
 case "$(uname -s 2>/dev/null)" in
@@ -160,7 +164,8 @@ run_reset() {
 
 start_api() {
   info "Iniciando a API em $BASE_URL ..."
-  "$PYEXE" -m aurora.cli run > "$LOG_DIR/api.log" 2>&1 &
+  printf '\n----- nova instancia da API (%s) -----\n' "$(date '+%Y-%m-%d %H:%M:%S')" >> "$API_LOG"
+  PYTHONUNBUFFERED=1 "$PYEXE" -m aurora.cli run >> "$API_LOG" 2>&1 &
   API_PID=$!
   local i
   for i in $(seq 1 40); do
@@ -170,8 +175,8 @@ start_api() {
     fi
     sleep 1
   done
-  echo "ERRO: a API nao respondeu em $BASE_URL apos 40s. Log em $LOG_DIR/api.log" >&2
-  tail -n 40 "$LOG_DIR/api.log" >&2 2>/dev/null
+  echo "ERRO: a API nao respondeu em $BASE_URL apos 40s. Log em $API_LOG" >&2
+  tail -n 40 "$API_LOG" >&2 2>/dev/null
   exit 1
 }
 
@@ -450,8 +455,12 @@ ct14() {
   tmp_s4="$LOG_DIR/ct14_s4.json"
 
   curl -s -m 60 -o "$tmp_s3" -w '%{http_code}' -X POST "$BASE_URL/sessoes/$S3/confirmacoes" -H "Content-Type: application/json" -d "$body_s3" > "$tmp_s3.status" &
+  local pid_s3=$!
   curl -s -m 60 -o "$tmp_s4" -w '%{http_code}' -X POST "$BASE_URL/sessoes/$S4/confirmacoes" -H "Content-Type: application/json" -d "$body_s4" > "$tmp_s4.status" &
-  wait
+  local pid_s4=$!
+  # IMPORTANTE: esperar so os dois curls (nao um `wait` bare, que bloquearia
+  # ate a propria API em background de start_api() terminar).
+  wait "$pid_s3" "$pid_s4"
 
   status_s3=$(cat "$tmp_s3.status")
   status_s4=$(cat "$tmp_s4.status")

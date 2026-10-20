@@ -47,3 +47,16 @@ Este documento audita o mapeamento entre requisitos de negócio, as 5 garantias 
 | **13** | Reinício da API sem reset | `POST /sessoes/{S1}/mensagens` | Total de eventos preservado; dados de 101 e 302 íntegros. Automatizado: `tests/test_api_integration.py` (`test_passo_13_*`). |
 | **14** | Disputa concorrente simultânea (S3 e S4) | `POST /confirmacoes` (disparo simultâneo `&`) | Ambas respondem 200 OK; exatamente 1 reserva gravada para 2030-05-11. |
 | **15** | Auditoria final do repositório | Repositório / README | Dependências fixadas, sem chaves versionadas, 5 garantias comprovadas. |
+
+---
+
+## 4. Execução Real Complementar (Fase 06)
+
+Os Passos 1-15 acima são validados pela suíte mockada (sem LLM real). [`scripts/run_test_plan.sh`](../scripts/run_test_plan.sh) automatiza o mesmo roteiro contra a API real com o Gemini de verdade — ver [`docs/phases/phase-06-test-plan-execution/`](phases/phase-06-test-plan-execution/).
+
+| Cobertura | Status | Evidência |
+| :--- | :---: | :--- |
+| Passos 1-14 (individualmente, em execuções distintas) | Validado | `docs/decisions/technical-decisions-phase-06-test-plan-execution.md` |
+| Passo 13 (reinício real do processo, Garantia 3) | Validado | Contagem de eventos preservada; dados de domínio intactos após `kill`+restart real. |
+| Passo 14 (disputa concorrente real, Garantia 5) | Validado | Uma sessão recebeu `sucesso`; a outra `"já está ocupado"`, sem erro 500 em nenhuma. |
+| Execução única e completa (18/18 CTs em sequência) | **Pendente** | Bloqueada por rate limiting/quota da API do Gemini na chave configurada, não por bug de código — ver `docs/phases/phase-06-test-plan-execution/validation.md`. |

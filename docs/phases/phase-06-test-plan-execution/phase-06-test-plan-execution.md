@@ -11,15 +11,16 @@ Bibliotecas decididas nesta fase: ver [`library-refs.md`](library-refs.md).
 
 ## Step Implementations (SIs)
 1. **SI-06-01**: Criar [`scripts/run_test_plan.sh`](../../../scripts/run_test_plan.sh) cobrindo CT-01 a CT-18, com resolução de interpretador via `uv`/`.venv`, helpers de asserção e extração de JSON via Python, e ciclo de vida real da API (start/stop/restart). **Concluído.**
-2. **SI-06-02**: Diagnosticar e corrigir a causa raiz dos erros `500` em `POST /sessoes/{id}/mensagens` observados na primeira execução real (a partir do CT-03, até o reinício do CT-13). **Pendente.**
-3. **SI-06-03**: Corrigir o bug do próprio script: `start_api()` reabre `api.log` com `>` (truncando) a cada reinício, destruindo o traceback da instância anterior — necessário para poder diagnosticar o SI-06-02. **Pendente.**
-4. **SI-06-04**: Executar [`scripts/run_test_plan.sh`](../../../scripts/run_test_plan.sh) do início ao fim (CT-01 a CT-18) sem falhas contra a API real. **Pendente** (execução abortada pelo usuário durante o CT-14, antes da correção do SI-06-02/03).
-5. **SI-06-05**: Atualizar [`docs/TRACKER.md`](../../TRACKER.md) com a evidência de execução real (distinta da suíte mockada da Fase 05) após o SI-06-04 ter sucesso. **Pendente.**
+2. **SI-06-02**: Diagnosticar e corrigir a causa raiz dos erros em `POST /sessoes/{id}/mensagens` observados nas execuções reais. **Concluído**: `extrair_confirmacoes_pendentes` lia `args["payload"]` em vez do formato real `args["toolConfirmation"]["payload"]` — corrigido em [`src/aurora/api.py`](../../../src/aurora/api.py) e em [`tests/test_api_integration.py`](../../../tests/test_api_integration.py).
+3. **SI-06-03**: Corrigir o bug do próprio script: `start_api()` reabria `api.log` com `>` (truncando) a cada reinício. **Concluído**: trunca uma única vez no início da execução, `>>` (append) em cada restart.
+4. **SI-06-04**: Executar [`scripts/run_test_plan.sh`](../../../scripts/run_test_plan.sh) do início ao fim (CT-01 a CT-18) sem falhas contra a API real. **Pendente** — bloqueado por rate limiting/quota da API do Gemini na chave configurada a partir do CT-07 numa execução em sequência rápida; não é um bug de código (ver `docs/decisions/`).
+5. **SI-06-05**: Atualizar [`docs/TRACKER.md`](../../TRACKER.md) com a evidência de execução real (distinta da suíte mockada da Fase 05). **Pendente.**
+6. **SI-06-06** (melhoria, não crítica): adicionar espera configurável entre chamadas em `scripts/run_test_plan.sh` para tornar a execução completa reprodutível independentemente da quota da chave. **Pendente.**
 
 ## Entregáveis e Critérios de Conclusão
 - [x] Script `run_test_plan.sh` criado, com sintaxe válida (`bash -n`) e cobrindo os 18 CTs do `TEST_PLAN.md`.
-- [x] CT-01, CT-02 e CT-09 validados com sucesso contra a API real (sem LLM necessário para a lógica desses três).
+- [x] CT-01 a CT-12 validados com sucesso contra a API real em pelo menos uma execução cada.
 - [x] CT-13 (reinício real do processo) validado com sucesso: contagem de eventos preservada, dados de domínio intactos, e `POST /mensagens` voltou a funcionar após o restart — evidência real da Garantia 3.
-- [ ] **Pendência (SI-06-02)**: causa raiz do `500` em `POST /mensagens` (CT-03 a CT-12, e CT-10 em S2) não identificada.
-- [ ] **Pendência (SI-06-03)**: truncamento do log da API a cada restart impede diagnosticar o SI-06-02.
-- [ ] **Pendência (SI-06-04)**: execução completa e bem-sucedida dos 18 CTs ainda não alcançada (abortada no CT-14 pelo usuário, em 2026-10-19, antes da correção acima).
+- [x] CT-14 (disputa concorrente real) validado com sucesso após corrigir o `wait` sem argumentos do próprio script: uma sessão recebeu `sucesso` (código novo gerado), a outra `"já está ocupado"` — exatamente o comportamento esperado da Garantia 5 sob concorrência real.
+- [x] Bug real de formato do ADK (`toolConfirmation.payload`) identificado, corrigido e coberto por teste mockado fiel ao formato real (31/31 testes da suíte continuam passando).
+- [ ] **Pendência (SI-06-04)**: execução completa e bem-sucedida dos 18 CTs em uma única rodada ainda não alcançada — bloqueada por rate limiting da API real, não por código.
