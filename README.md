@@ -90,143 +90,188 @@ As cinco garantias críticas exigidas pela administração do condomínio são a
 ### Garantia 1: Cobrança ou acesso só com confirmação
 
 - **Arquivos:** `src/aurora/tools.py` e `src/aurora/api.py`
-- **Trecho no código (`src/aurora/tools.py`):**
+- **Trecho no código (`src/aurora/tools.py#L121-137`, dentro de `reservar_area`):**
   ```python
-  # Criação de reserva (Garantia 1 e Regra de Negócio 2)
-  if area_info["taxa"] > 0:
-      if tool_context.tool_confirmation is None:
+  # 3. Garantia 1: Cobrança se taxa > 0
+  if taxa > 0:
+      conf = tool_context.tool_confirmation
+      if conf is None:
           tool_context.request_confirmation(
-              hint=f"Reserva do {area_info['nome']} para {data} sujeita à taxa de R$ {area_info['taxa']:.2f}.",
-              payload={"acao": "reservar_area", "detalhes": {"area": area, "data": data}},
+              hint=f"Reserva do {area_nome} para {data} sujeita à taxa de R$ {taxa:.2f}.",
+              payload={"acao": "reservar_area", "detalhes": {"area": area_id, "data": data}},
           )
-          return {"status": "pendente_confirmacao", "mensagem": "Confirmação necessária para cobrança."}
-      elif not tool_context.tool_confirmation.confirmed:
-          return {"status": "cancelado", "mensagem": "Ação não confirmada pelo morador."}
-
-  # Autorização de visitante (Garantia 1 e Regra de Negócio 3)
-  if tool_context.tool_confirmation is None:
+          return {
+              "status": "pendente_confirmacao",
+              "mensagem": f"A reserva do {area_nome} tem taxa de R$ {taxa:.2f} e requer confirmação.",
+          }
+      elif not conf.confirmed:
+          return {
+              "status": "cancelado",
+              "mensagem": "Reserva cancelada pois a taxa não foi confirmada.",
+          }
+  ```
+- **Trecho no código (`src/aurora/tools.py#L215-229`, dentro de `autorizar_visitante`):**
+  ```python
+  conf = tool_context.tool_confirmation
+  if conf is None:
       tool_context.request_confirmation(
-          hint=f"Liberar acesso para {nome} na data {data}?",
+          hint=f"Autorizar entrada de {nome} no condomínio no dia {data}?",
           payload={"acao": "autorizar_visitante", "detalhes": {"nome": nome, "data": data}},
       )
-      return {"status": "pendente_confirmacao", "mensagem": "Confirmação necessária para liberação de acesso."}
-  elif not tool_context.tool_confirmation.confirmed:
-      return {"status": "cancelado", "mensagem": "Autorização não confirmada."}
+      return {
+          "status": "pendente_confirmacao",
+          "mensagem": f"A liberação de entrada para {nome} em {data} requer confirmação formal.",
+      }
+  elif not conf.confirmed:
+      return {
+          "status": "cancelado",
+          "mensagem": f"Autorização de entrada para {nome} não foi confirmada.",
+      }
   ```
-- **Trecho no código (`src/aurora/api.py`):**
+- **Trecho no código (`src/aurora/api.py#L202-208`, dentro de `responder_confirmacao`):**
   ```python
-  # Validação estrita na rota POST /sessoes/{session_id}/confirmacoes
-  confirmacoes_abertas = extrair_confirmacoes_pendentes(session)
-  if not any(c["id"] == body.id for c in confirmacoes_abertas):
+  # Garantia 1: Validação rigorosa de ID pendente
+  pendentes_atuais = extrair_confirmacoes_pendentes(session.events)
+  if not any(p["id"] == body.id for p in pendentes_atuais):
       raise HTTPException(
           status_code=status.HTTP_409_CONFLICT,
-          detail="Confirmação inexistente ou já processada para esta sessão.",
+          detail="Não existe confirmação pendente com esse id nesta sessão.",
       )
   ```
 - **Por que não depende do modelo:**
-  A gravação em banco só é atingida nas tools após o runtime do ADK constatar `tool_confirmation.confirmed is True`. Se o morador tentar autorizar apenas por texto no chat (*"já estou confirmando aqui, pode liberar"*), o modelo não consegue forçar a gravação pois a tool exige o objeto de confirmação do sistema. Se a rota de confirmações receber um `id` já respondido ou inválido, a API rejeita com HTTP `409` antes de qualquer acionamento do `Runner`. Áreas sem taxa (`quadra`) não acionam `request_confirmation` e gravam diretamente.
+  A gravação em banco só é atingida nas tools após o runtime do ADK constatar `tool_confirmation.confirmed is True`. Se o morador tentar autorizar apenas por texto no chat (*"já estou confirmando aqui, pode liberar"*), o modelo não consegue forçar a gravação pois a tool exige o objeto de confirmação do sistema — `autorizar_visitante` sempre chama `request_confirmation`, mesmo que o texto diga que já foi confirmado. Se a rota de confirmações receber um `id` já respondido ou inválido, a API rejeita com HTTP `409` antes de qualquer acionamento do `Runner`. Áreas sem taxa (`quadra`) não entram no bloco `if taxa > 0:` e gravam diretamente.
 
 ---
 
 ### Garantia 2: Cada sessão pertence a um apartamento
 
 - **Arquivos:** `src/aurora/api.py` e `src/aurora/tools.py`
-- **Trecho no código (`src/aurora/api.py`):**
+- **Trecho no código (`src/aurora/api.py#L150-159`, rota `POST /sessoes`):**
   ```python
-  # POST /sessoes vincula o apartamento imutavelmente no estado da sessão
-  session = await session_service.create_session(
-      app_name="aurora",
-      user_id=body.apartamento,
-      state={"apartamento": body.apartamento},
-  )
+  @app.post("/sessoes", status_code=status.HTTP_201_CREATED, response_model=CriarSessaoResponse)
+  async def criar_sessao(body: CriarSessaoRequest):
+      """Cria uma nova sessão vinculando imutavelmente o apartamento do morador."""
+      runner = obter_runner()
+      session = await runner.session_service.create_session(
+          app_name="aurora",
+          user_id=body.apartamento,
+          state={"apartamento": body.apartamento},
+      )
+      return CriarSessaoResponse(session_id=session.id)
   ```
-- **Trecho no código (`src/aurora/tools.py`):**
+- **Trecho no código (`src/aurora/tools.py#L167-180`, `cancelar_minha_reserva`):**
   ```python
-  def cancelar_minha_reserva(codigo: str, tool_context: ToolContext) -> dict:
-      # O apartamento vem exclusivamente do estado da sessão, nunca de argumentos do LLM
-      apartamento = tool_context.state["apartamento"]
+  def cancelar_minha_reserva(codigo: str, tool_context: ToolContext) -> Dict[str, Any]:
+      apartamento = tool_context.state.get("apartamento", "")
       with get_db_connection() as conn:
           cur = conn.execute(
               "DELETE FROM reservas WHERE codigo = ? AND apartamento = ?",
               (codigo, apartamento),
           )
-          if cur.rowcount == 0:
-              return {"status": "erro", "mensagem": "Reserva não encontrada para este apartamento."}
+          removidos = cur.rowcount
           conn.commit()
-      return {"status": "sucesso", "mensagem": "Reserva cancelada."}
-
-  def verificar_disponibilidade_area(area: str, data: str) -> dict:
-      # Sanitização estrita: informa se está livre sem carregar ou expor quem reservou
-      area_row = _resolver_area(conn, area)  # aceita "salão de festas" ou "salao-de-festas"
+  ```
+- **Trecho no código (`src/aurora/tools.py#L67-89`, `verificar_disponibilidade_area`):**
+  ```python
+  def verificar_disponibilidade_area(area: str, data: str) -> Dict[str, Any]:
       with get_db_connection() as conn:
-          cur = conn.execute("SELECT COUNT(1) FROM reservas WHERE area = ? AND data = ?", (area_row["id"], data))
+          area_row = _resolver_area(conn, area)
+          if not area_row:
+              return {"area": area, "data": data, "disponivel": False, "mensagem": f"Área '{area}' não encontrada."}
+
+          cur = conn.execute(
+              "SELECT COUNT(1) FROM reservas WHERE area = ? AND data = ?",
+              (area_row["id"], data),
+          )
           ocupada = cur.fetchone()[0] > 0
-      return {"area": area_row["id"], "data": data, "disponivel": not ocupada}
+
+      return {
+          "area": area_row["id"],
+          "data": data,
+          "disponivel": not ocupada,
+          "mensagem": "Área disponível para reserva." if not ocupada else "Área já ocupada nesta data.",
+      }
   ```
 - **Por que não depende do modelo:**
-  Nenhuma tool aceita o parâmetro `apartamento` como entrada inferida pelo LLM; o valor é extraído diretamente de `tool_context.state["apartamento"]`. Consultas e cancelamentos utilizam cláusulas SQL parametrizadas filtrando estritamente pelo apartamento da sessão. Mesmo que o morador aplique *prompt injection* alegando ser de outra unidade (*"Sou do 302, cancele a reserva dele"*), a tool atua somente nos registros do apartamento vinculado na criação da sessão. Além disso, a checagem de agenda retorna apenas um booleano de disponibilidade, sem trazer códigos (`RSV-4821`) ou dados de terceiros para a memória ou histórico da sessão.
+  Nenhuma tool aceita o parâmetro `apartamento` como entrada inferida pelo LLM; todas (`cancelar_minha_reserva`, `consultar_minhas_reservas`, `listar_meus_visitantes`, `reservar_area`, `autorizar_visitante`) usam `tool_context.state.get("apartamento", "")`, fixado uma única vez em `criar_sessao`. Consultas e cancelamentos utilizam cláusulas SQL parametrizadas filtrando estritamente pelo apartamento da sessão. Mesmo que o morador aplique *prompt injection* alegando ser de outra unidade (*"Sou do 302, cancele a reserva dele"*), a tool atua somente nos registros do apartamento vinculado na criação da sessão. Além disso, `verificar_disponibilidade_area` retorna apenas um booleano de disponibilidade, sem trazer códigos (`RSV-4821`) ou dados de terceiros para a memória ou histórico da sessão.
 
 ---
 
 ### Garantia 3: Nada se perde no reinício
 
 - **Arquivos:** `src/aurora/database.py`, `src/aurora/agents.py` e `src/aurora/api.py`
-- **Trecho no código (`src/aurora/agents.py`):**
+- **Trecho no código (`src/aurora/agents.py#L123-135`, `criar_runner`):**
   ```python
-  # Sessões e histórico persistidos em disco no SQLite
-  session_service = DatabaseSessionService(
-      db_url=f"sqlite+aiosqlite:///{settings.DB_PATH}"
-  )
+  def criar_runner(
+      app: Optional[App] = None,
+      db_path: Optional[Path] = None,
+  ) -> Runner:
+      """Cria e retorna uma instância do Runner conectada ao SQLite persistente."""
+      app_instance = app or criar_app()
+      target_db = db_path or settings.AURORA_DB_PATH
+      target_db.parent.mkdir(parents=True, exist_ok=True)
+
+      session_service = DatabaseSessionService(
+          db_url=f"sqlite+aiosqlite:///{target_db.resolve()}"
+      )
+      return Runner(app=app_instance, session_service=session_service)
   ```
-- **Trecho no código (`src/aurora/database.py`):**
-  ```python
-  # Tabela histórica garante que códigos nunca se repitam (RN05), mesmo após cancelamento e reinício
+- **Trecho no código (`src/aurora/database.py#L52-54`, dentro de `init_schema`):**
+  ```sql
   CREATE TABLE IF NOT EXISTS codigos_reserva_usados (
       codigo TEXT PRIMARY KEY
   );
   ```
 - **Por que não depende do modelo:**
-  Toda a persistência das conversas, eventos e estados do Google ADK é delegada ao `DatabaseSessionService` gravado em arquivo SQLite local (`storage/aurora.db`). Paralelamente, todas as mutações de domínio (reservas criadas/canceladas, visitantes e códigos gerados) são registradas em tabelas ACID no mesmo banco. Ao reiniciar o processo da API, os dados permanecem intactos no disco e as sessões são retomadas em seus exatos estados anteriores.
+  Toda a persistência das conversas, eventos e estados do Google ADK é delegada ao `DatabaseSessionService` gravado em arquivo SQLite local (`storage/aurora.db`), recriado a cada chamada de `criar_runner()` sobre o mesmo arquivo. Paralelamente, todas as mutações de domínio (reservas criadas/canceladas, visitantes e códigos gerados) são registradas em tabelas ACID no mesmo banco. Ao reiniciar o processo da API com `Ctrl+C` + novo `uv run python -m aurora.cli run` (sem rodar o comando de restauração, que é o único que recria as tabelas do zero), os dados permanecem intactos no disco e as sessões são retomadas em seus exatos estados anteriores, validado em [`scripts/run_test_plan.sh`](./scripts/run_test_plan.sh) (CT-13).
 
 ---
 
 ### Garantia 4: O regulamento é consultado, não carregado
 
 - **Arquivos:** `src/aurora/agents.py`, `src/aurora/regulamento.py` e `src/aurora/tools.py`
-- **Trecho no código (`src/aurora/agents.py`):**
+- **Trecho no código (`src/aurora/agents.py#L94-110`, `recepcao_aurora` — instrução sem o regulamento):**
   ```python
-  # O Agente Principal NÃO recebe o regulamento em sua instrução
   recepcao_aurora = Agent(
       name="recepcao_aurora",
-      instruction="Você é o assistente virtual do Residencial Aurora. Identifique o pedido do morador e direcione para o especialista competente.",
+      model=settings.AURORA_MODEL_NAME,
+      instruction=(
+          "Você é a recepção virtual do Residencial Aurora. Seu papel é acolher o morador e transferir "
+          "o atendimento para o especialista adequado de acordo com o pedido:\n"
+          "- Para áreas comuns, reservas, cancelamentos ou disponibilidade de datas: transfira para 'agente_reservas'.\n"
+          "- Para liberação de visitantes ou consultas da portaria: transfira para 'agente_visitantes'.\n"
+          "- Para dúvidas sobre regras, normas e regulamento interno: transfira para 'agente_regulamento'.\n"
+          "Transfira a conversa diretamente para o especialista sem tentar responder ou inventar regras."
+      ),
       sub_agents=[agente_reservas, agente_visitantes, agente_regulamento],
   )
-
-  # O especialista em regulamento recebe apenas o índice sucinto de tópicos
-  agente_regulamento = Agent(
-      name="agente_regulamento",
-      instruction="Você tira dúvidas sobre o regulamento. Identifique o capítulo aplicável e use a tool consultar_capitulo_regulamento para obter o texto.",
-      tools=[consultar_capitulo_regulamento],
-  )
   ```
-- **Trecho no código (`src/aurora/regulamento.py`):**
+- **Trecho no código (`src/aurora/agents.py#L88-90`, ferramentas de `agente_regulamento` — só o índice de capítulos vai na instrução, nenhum texto do regulamento):**
   ```python
-  def obter_capitulo(numero_capitulo: int) -> str:
-      # Carrega granularmente apenas o capítulo solicitado a partir de dados/regulamento.md
-      capitulos = carregar_capitulos_do_arquivo("dados/regulamento.md")
-      return capitulos.get(numero_capitulo, "Capítulo não encontrado.")
+  tools=[
+      consultar_capitulo_regulamento,
+  ],
+  ```
+- **Trecho no código (`src/aurora/regulamento.py#L58-64`, `obter_capitulo`):**
+  ```python
+  def obter_capitulo(numero: int, caminho: Optional[Path] = None) -> str:
+      """Retorna o texto exclusivo do capítulo solicitado."""
+      capitulos = carregar_capitulos(caminho)
+      return capitulos.get(
+          numero,
+          f"Capítulo {numero} não encontrado. O regulamento possui os capítulos 1 a 14.",
+      )
   ```
 - **Por que não depende do modelo:**
-  O arquivo integral [`dados/regulamento.md`](./dados/regulamento.md) (~45 KB) jamais é concatenado no prompt do sistema nem no contexto inicial dos agentes. O acesso é intermediado exclusivamente pela tool `consultar_capitulo_regulamento`, que extrai apenas o capítulo solicitado (ex.: Capítulo IV para dúvidas sobre a piscina). Com isso, nenhum trecho de capítulos alheios é registrado nos eventos da sessão (`GET /sessoes/{id}/eventos`), preservando a janela de contexto e reduzindo o consumo de tokens.
+  O arquivo integral [`dados/regulamento.md`](./dados/regulamento.md) (~45 KB) jamais é concatenado no prompt do sistema nem no contexto inicial dos agentes — `recepcao_aurora` só recebe a instrução de triagem acima, e `agente_regulamento` só recebe o índice textual dos 14 capítulos na própria instrução (não o conteúdo). O acesso ao texto é intermediado exclusivamente pela tool `consultar_capitulo_regulamento` → `obter_capitulo`, que extrai apenas o capítulo solicitado (ex.: Capítulo IV para dúvidas sobre a piscina). Com isso, nenhum trecho de capítulos alheios é registrado nos eventos da sessão (`GET /sessoes/{id}/eventos`), validado em [`scripts/run_test_plan.sh`](./scripts/run_test_plan.sh) (CT-12, CT-17).
 
 ---
 
 ### Garantia 5: Dois moradores, uma reserva
 
 - **Arquivos:** `src/aurora/database.py` e `src/aurora/tools.py`
-- **Trecho no código (`src/aurora/database.py`):**
+- **Trecho no código (`src/aurora/database.py#L44-50`, dentro de `init_schema`):**
   ```sql
-  -- Restrição de unicidade física por área e data no instante da escrita
   CREATE TABLE IF NOT EXISTS reservas (
       codigo TEXT PRIMARY KEY,
       apartamento TEXT NOT NULL,
@@ -235,27 +280,37 @@ As cinco garantias críticas exigidas pela administração do condomínio são a
       UNIQUE(area, data)
   );
   ```
-- **Trecho no código (`src/aurora/tools.py`):**
+- **Trecho no código (`src/aurora/tools.py#L139-164`, dentro de `reservar_area`, após a confirmação):**
   ```python
+  # 4. Gravação atômica com trava de concorrência (Garantia 5 & RN05)
   try:
-      with get_db_connection() as conn:
-          conn.execute("BEGIN IMMEDIATE")
-          conn.execute("INSERT INTO codigos_reserva_usados (codigo) VALUES (?)", (codigo,))
-          conn.execute(
-              "INSERT INTO reservas (codigo, apartamento, area, data) VALUES (?, ?, ?, ?)",
-              (codigo, apartamento, area, data),
-          )
-          conn.commit()
-          return {"status": "sucesso", "codigo": codigo, "mensagem": "Reserva confirmada!"}
+      conn.execute("BEGIN IMMEDIATE")
+      codigo = _gerar_codigo_reserva_unico(conn)
+      conn.execute(
+          "INSERT INTO codigos_reserva_usados (codigo) VALUES (?)",
+          (codigo,),
+      )
+      conn.execute(
+          "INSERT INTO reservas (codigo, apartamento, area, data) VALUES (?, ?, ?, ?)",
+          (codigo, apartamento, area_id, data),
+      )
+      conn.commit()
+      return {
+          "status": "sucesso",
+          "codigo": codigo,
+          "area": area_id,
+          "data": data,
+          "mensagem": f"Reserva de {area_nome} confirmada com sucesso para {data}! Código: {codigo}",
+      }
   except sqlite3.IntegrityError:
-      # Tratamento atômico da corrida: devolve status amigável sem erro 500
+      conn.rollback()
       return {
           "status": "indisponivel",
-          "mensagem": "A área acabou de ser reservada por outro morador para esta data.",
+          "mensagem": f"Não foi possível concluir a reserva: a área {area_nome} acabou de ser reservada para a data {data}.",
       }
   ```
 - **Por que não depende do modelo:**
-  A integridade não depende de uma simples conferência preliminar em código Python. A exclusividade é assegurada no instante exato da gravação no banco de dados pela constraint física `UNIQUE(area, data)` e pela transação `BEGIN IMMEDIATE` no SQLite (com WAL mode). Quando duas confirmações simultâneas concorrem pela mesma data, o primeiro processo efetiva a escrita e o segundo intercepta o `sqlite3.IntegrityError`, retornando uma mensagem de indisponibilidade tratada com HTTP `200 OK`. Em nenhum momento o banco permite duas reservas ativas para a mesma área e data.
+  A integridade não depende de uma simples conferência preliminar em código Python (a verificação de disponibilidade no passo 2 de `reservar_area` é só uma otimização, não a garantia). A exclusividade é assegurada no instante exato da gravação no banco de dados pela constraint física `UNIQUE(area, data)` e pela transação `BEGIN IMMEDIATE` no SQLite (com WAL mode, ativado em [`get_db_connection`](./src/aurora/database.py#L12-26)). Quando duas confirmações simultâneas concorrem pela mesma data, o primeiro processo efetiva a escrita e o segundo intercepta o `sqlite3.IntegrityError`, retornando uma mensagem de indisponibilidade tratada com HTTP `200 OK` — nunca `500`. Em nenhum momento o banco permite duas reservas ativas para a mesma área e data, validado contra a API real com disputa concorrente genuína (dois `curl` simultâneos) em [`scripts/run_test_plan.sh`](./scripts/run_test_plan.sh) (CT-14).
 
 ---
 
