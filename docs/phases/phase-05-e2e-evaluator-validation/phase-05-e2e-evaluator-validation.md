@@ -6,10 +6,10 @@ Implementar e executar o teste de ponta a ponta que reproduz com exatidão os 15
 Bibliotecas decididas nesta fase: ver [`library-refs.md`](library-refs.md).
 
 ## Step Implementations (SIs)
-1. **SI-05-01**: Implementar [`tests/test_evaluator_flow.py`](file:///e:/Projects/mba-ia-desafio-criacao-agente/tests/test_evaluator_flow.py) cobrindo os passos 1 a 15 de forma determinística e encadeada.
+1. **SI-05-01**: Implementar [`tests/test_evaluator_flow.py`](../../../tests/test_evaluator_flow.py) cobrindo os passos 1 a 15 de forma determinística e encadeada.
 2. **SI-05-02**: Validar concorrência simultânea (Passo 14) com requisições assíncronas paralelas via `asyncio.gather` e `httpx.AsyncClient`.
 3. **SI-05-03**: Validar resiliência a reinício (Passo 13) recriando a instância do `Runner`/`API` sobre o mesmo arquivo de banco de dados.
-4. **SI-05-04**: Atualizar a matriz de rastreabilidade em [`docs/TRACKER.md`](file:///e:/Projects/mba-ia-desafio-criacao-agente/docs/TRACKER.md).
+4. **SI-05-04**: Atualizar a matriz de rastreabilidade em [`docs/TRACKER.md`](../../TRACKER.md).
 
 ## Entregáveis e Critérios de Conclusão
 - [x] Passos 1, 2, 5, 6, 7, 8, 10, 14 cobertos por `tests/test_evaluator_flow.py` (chamando as tools determinísticas diretamente com `tool_context` mockado).

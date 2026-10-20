@@ -10,12 +10,12 @@ Implementar as tools Python determinísticas com suporte às garantias de negóc
 Bibliotecas decididas nesta fase: ver [`library-refs.md`](library-refs.md).
 
 ## Step Implementations (SIs)
-1. **SI-02-01**: Implementar `listar_areas_comuns()` e `consultar_minhas_reservas(tool_context: ToolContext)` em [`src/aurora/tools.py`](file:///e:/Projects/mba-ia-desafio-criacao-agente/src/aurora/tools.py).
+1. **SI-02-01**: Implementar `listar_areas_comuns()` e `consultar_minhas_reservas(tool_context: ToolContext)` em [`src/aurora/tools.py`](../../../src/aurora/tools.py).
 2. **SI-02-02**: Implementar `verificar_disponibilidade_area(area: str, data: str)` retornando apenas booleano (sem vazar dados de terceiros).
 3. **SI-02-03**: Implementar `reservar_area(area: str, data: str, tool_context: ToolContext)` com bifurcação de confirmação (taxa 0 grava direto, taxa > 0 pede confirmação) e gravação atômica `UNIQUE(area, data)`.
 4. **SI-02-04**: Implementar `cancelar_minha_reserva(codigo: str, tool_context: ToolContext)` filtrando exclusivamente pelo apartamento da sessão e sem pedir confirmação.
 5. **SI-02-05**: Implementar `listar_meus_visitantes(tool_context: ToolContext)` e `autorizar_visitante(nome: str, data: str, tool_context: ToolContext)` exigindo confirmação obrigatória.
-6. **SI-02-06**: Criar testes automatizados em [`tests/test_tools.py`](file:///e:/Projects/mba-ia-desafio-criacao-agente/tests/test_tools.py).
+6. **SI-02-06**: Criar testes automatizados em [`tests/test_tools.py`](../../../tests/test_tools.py).
 
 ## Entregáveis e Critérios de Conclusão
 - [x] `reservar_area` cobre taxa zero (gravação direta) e taxa > 0 (pendente/negado/aprovado) — [tests/test_tools.py#L28-L89](../../../tests/test_tools.py#L28-L89).

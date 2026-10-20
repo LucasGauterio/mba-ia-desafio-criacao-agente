@@ -1,6 +1,6 @@
 # Plano de Testes (End-to-End na API Real) — Residencial Aurora
 
-Este documento define os cenários de teste de ponta a ponta (E2E) que devem ser executados contra a **API real** (`http://localhost:8000`), utilizando os **dados reais** do diretório [`dados/`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados) e cobrindo integralmente o **Fluxo do Avaliador (Passos 1 a 15)**, as **5 Garantias Obrigatórias** e casos de borda adicionais.
+Este documento define os cenários de teste de ponta a ponta (E2E) que devem ser executados contra a **API real** (`http://localhost:8000`), utilizando os **dados reais** do diretório [`dados/`](dados) e cobrindo integralmente o **Fluxo do Avaliador (Passos 1 a 15)**, as **5 Garantias Obrigatórias** e casos de borda adicionais.
 
 ---
 
@@ -8,7 +8,7 @@ Este documento define os cenários de teste de ponta a ponta (E2E) que devem ser
 
 Antes de iniciar a bateria de testes, o comando de restauração deve deixar o sistema exatamente com os seguintes registros:
 
-### 1.1. Apartamentos ([`dados/apartamentos.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/apartamentos.json))
+### 1.1. Apartamentos ([`dados/apartamentos.json`](dados/apartamentos.json))
 | Apartamento (`numero`) | Morador (`morador`) | Papel nos Testes |
 | :---: | :--- | :--- |
 | **`101`** | Helena Prado | Moradora principal das sessões `S1`, `S2` e `S3` |
@@ -18,27 +18,27 @@ Antes de iniciar a bateria de testes, o comando de restauração deve deixar o s
 | **`301`** | Cecília Rocha | Apartamento sem reservas/visitantes iniciais |
 | **`302`** | Rafael Moreira | Alvo das tentativas de invasão/vazamento (`RSV-4821` e visitante `Marina Duarte`) |
 
-### 1.2. Áreas Comuns ([`dados/areas.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/areas.json))
+### 1.2. Áreas Comuns ([`dados/areas.json`](dados/areas.json))
 | ID (`id`) | Nome (`nome`) | Taxa (`taxa`) | Exige Confirmação? (Garantia 1) |
 | :--- | :--- | :---: | :---: |
 | **`salao-de-festas`** | Salão de festas | R\$ 150,00 | **Sim** (`taxa > 0`) |
 | **`churrasqueira`** | Churrasqueira | R\$ 80,00 | **Sim** (`taxa > 0`) |
 | **`quadra`** | Quadra poliesportiva | R\$ 0,00 | **Não** (`taxa == 0`) |
 
-### 1.3. Reservas Iniciais ([`dados/reservas.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/reservas.json))
+### 1.3. Reservas Iniciais ([`dados/reservas.json`](dados/reservas.json))
 | Código (`codigo`) | Apartamento (`apartamento`) | Área (`area`) | Data (`data`) |
 | :---: | :---: | :--- | :---: |
 | **`RSV-1377`** | `101` (Helena Prado) | `quadra` | `2030-03-09` |
 | **`RSV-4821`** | `302` (Rafael Moreira) | `salao-de-festas` | `2030-03-16` |
 | **`RSV-2950`** | `201` (Luana Castro) | `churrasqueira` | `2030-03-23` |
 
-### 1.4. Visitantes Iniciais ([`dados/visitantes.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/visitantes.json))
+### 1.4. Visitantes Iniciais ([`dados/visitantes.json`](dados/visitantes.json))
 | Apartamento (`apartamento`) | Nome (`nome`) | Data (`data`) |
 | :---: | :--- | :---: |
 | **`302`** | Marina Duarte | `2030-03-16` |
 | **`201`** | Paulo Nogueira | `2030-03-23` |
 
-### 1.5. Fatos Específicos do Regulamento ([`dados/regulamento.md`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/regulamento.md))
+### 1.5. Fatos Específicos do Regulamento ([`dados/regulamento.md`](dados/regulamento.md))
 | Capítulo | Artigo | Regra Específica no Texto Real |
 | :--- | :---: | :--- |
 | **Cap. III — Silêncio e boa convivência** | Art. 16 | Período de silêncio: entre **22h e 8h**, todos os dias da semana. |

@@ -17,15 +17,15 @@ A condição inegociável da administração (síndica) é que **o assistente ja
 
 ## 2. Ativos de Dados e Estado Inicial
 
-O sistema parte de uma base de dados estática localizada na pasta [`dados/`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados) (que **não pode ser alterada** no repositório e serve como fonte para restauração de estado):
+O sistema parte de uma base de dados estática localizada na pasta [`dados/`](dados) (que **não pode ser alterada** no repositório e serve como fonte para restauração de estado):
 
 | Arquivo | Entidade | Atributos | Estado Inicial |
 | :--- | :--- | :--- | :--- |
-| [`dados/apartamentos.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/apartamentos.json) | Apartamentos | `numero`, `morador` | 6 unidades: `101` (Helena), `102` (Bruno), `201` (Luana), `202` (Otávio), `301` (Cecília), `302` (Rafael) |
-| [`dados/areas.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/areas.json) | Áreas Comuns | `id`, `nome`, `taxa` (R\$) | `salao-de-festas` (R\$ 150,00), `churrasqueira` (R\$ 80,00), `quadra` (R\$ 0,00) |
-| [`dados/reservas.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/reservas.json) | Reservas | `codigo`, `apartamento`, `area`, `data` (`AAAA-MM-DD`) | `RSV-1377` (Apto 101, quadra, `2030-03-09`)<br>`RSV-4821` (Apto 302, salao-de-festas, `2030-03-16`)<br>`RSV-2950` (Apto 201, churrasqueira, `2030-03-23`) |
-| [`dados/visitantes.json`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/visitantes.json) | Visitantes | `apartamento`, `nome`, `data` (`AAAA-MM-DD`) | Apto `302`: Marina Duarte (`2030-03-16`)<br>Apto `201`: Paulo Nogueira (`2030-03-23`) |
-| [`dados/regulamento.md`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/regulamento.md) | Regulamento Interno | Texto estruturado em 14 capítulos (Art. 1º ao Art. 96) | Normas completas do condomínio (~45 KB) |
+| [`dados/apartamentos.json`](dados/apartamentos.json) | Apartamentos | `numero`, `morador` | 6 unidades: `101` (Helena), `102` (Bruno), `201` (Luana), `202` (Otávio), `301` (Cecília), `302` (Rafael) |
+| [`dados/areas.json`](dados/areas.json) | Áreas Comuns | `id`, `nome`, `taxa` (R\$) | `salao-de-festas` (R\$ 150,00), `churrasqueira` (R\$ 80,00), `quadra` (R\$ 0,00) |
+| [`dados/reservas.json`](dados/reservas.json) | Reservas | `codigo`, `apartamento`, `area`, `data` (`AAAA-MM-DD`) | `RSV-1377` (Apto 101, quadra, `2030-03-09`)<br>`RSV-4821` (Apto 302, salao-de-festas, `2030-03-16`)<br>`RSV-2950` (Apto 201, churrasqueira, `2030-03-23`) |
+| [`dados/visitantes.json`](dados/visitantes.json) | Visitantes | `apartamento`, `nome`, `data` (`AAAA-MM-DD`) | Apto `302`: Marina Duarte (`2030-03-16`)<br>Apto `201`: Paulo Nogueira (`2030-03-23`) |
+| [`dados/regulamento.md`](dados/regulamento.md) | Regulamento Interno | Texto estruturado em 14 capítulos (Art. 1º ao Art. 96) | Normas completas do condomínio (~45 KB) |
 
 ---
 
@@ -79,7 +79,7 @@ O sistema parte de uma base de dados estática localizada na pasta [`dados/`](fi
   - As reservas criadas, os cancelamentos efetuados, os visitantes autorizados e o controle de códigos de reserva já utilizados.
 
 ### Garantia 4 — Consulta Seletiva do Regulamento (Eficiência de Contexto)
-- O arquivo [`dados/regulamento.md`](file:///E:/Projects/mba-ia-desafio-criacao-agente/dados/regulamento.md) possui 14 capítulos e quase 500 linhas.
+- O arquivo [`dados/regulamento.md`](dados/regulamento.md) possui 14 capítulos e quase 500 linhas.
 - **Restrições estritas:**
   - O Agente Principal **não pode** receber o regulamento em suas instruções (`instruction`).
   - Nenhum evento gravado na sessão (`GET /sessoes/{session_id}/eventos`) pode conter o texto integral do regulamento ou trechos de capítulos que tratam de outros assuntos não relacionados à dúvida do morador.
