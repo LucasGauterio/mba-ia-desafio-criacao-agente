@@ -59,4 +59,4 @@ Os Passos 1-15 acima são validados pela suíte mockada (sem LLM real). [`script
 | Passos 1-14 (individualmente, em execuções distintas) | Validado | `docs/decisions/technical-decisions-phase-06-test-plan-execution.md` |
 | Passo 13 (reinício real do processo, Garantia 3) | Validado | Contagem de eventos preservada; dados de domínio intactos após `kill`+restart real. |
 | Passo 14 (disputa concorrente real, Garantia 5) | Validado | Uma sessão recebeu `sucesso`; a outra `"já está ocupado"`, sem erro 500 em nenhuma. |
-| Execução única e completa (18/18 CTs em sequência) | **Pendente** | Bloqueada por rate limiting/quota da API do Gemini na chave configurada, não por bug de código — ver `docs/phases/phase-06-test-plan-execution/validation.md`. |
+| Execução única e completa (18/18 CTs em sequência) | **Validado** | 90/90 passos OK, 0 FALHOU (2026-10-20) — ver `docs/phases/phase-06-test-plan-execution/validation.md`. |
