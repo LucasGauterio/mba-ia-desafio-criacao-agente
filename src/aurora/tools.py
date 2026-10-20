@@ -2,7 +2,8 @@
 
 import random
 import sqlite3
-from typing import Any, Dict, List
+import unicodedata
+from typing import Any, Dict, List, Optional
 
 from google.adk.tools import ToolContext
 
@@ -18,6 +19,31 @@ def _gerar_codigo_reserva_unico(conn: sqlite3.Connection) -> str:
         cur = conn.execute("SELECT 1 FROM codigos_reserva_usados WHERE codigo = ?", (codigo,))
         if not cur.fetchone():
             return codigo
+
+
+def _normalizar_texto(texto: str) -> str:
+    """Remove acentos, baixa a caixa e troca espaços por hífen para comparação tolerante."""
+    sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    return sem_acento.strip().lower().replace(" ", "-")
+
+
+def _resolver_area(conn: sqlite3.Connection, area_input: str) -> Optional[sqlite3.Row]:
+    """Resolve a área comum pelo id (slug) ou pelo nome legível, tolerante a acentos/caixa/espaços.
+
+    O LLM frequentemente passa o nome legível ("Salão de festas") em vez do slug
+    exato ("salao-de-festas"); sem essa resolução, a tool falha silenciosamente
+    com "área não encontrada" e nunca chega a acionar a confirmação (Garantia 1).
+    """
+    cur = conn.execute("SELECT id, nome, taxa FROM areas WHERE id = ?", (area_input,))
+    row = cur.fetchone()
+    if row:
+        return row
+    alvo = _normalizar_texto(area_input)
+    cur = conn.execute("SELECT id, nome, taxa FROM areas")
+    for candidata in cur.fetchall():
+        if _normalizar_texto(candidata["id"]) == alvo or _normalizar_texto(candidata["nome"]) == alvo:
+            return candidata
+    return None
 
 
 def listar_areas_comuns() -> List[Dict[str, Any]]:
@@ -45,14 +71,18 @@ def verificar_disponibilidade_area(area: str, data: str) -> Dict[str, Any]:
     sem expor quem reservou, o código da reserva ou dados de terceiros.
     """
     with get_db_connection() as conn:
+        area_row = _resolver_area(conn, area)
+        if not area_row:
+            return {"area": area, "data": data, "disponivel": False, "mensagem": f"Área '{area}' não encontrada."}
+
         cur = conn.execute(
             "SELECT COUNT(1) FROM reservas WHERE area = ? AND data = ?",
-            (area, data),
+            (area_row["id"], data),
         )
         ocupada = cur.fetchone()[0] > 0
 
     return {
-        "area": area,
+        "area": area_row["id"],
         "data": data,
         "disponivel": not ocupada,
         "mensagem": "Área disponível para reserva." if not ocupada else "Área já ocupada nesta data.",
@@ -71,17 +101,17 @@ def reservar_area(area: str, data: str, tool_context: ToolContext) -> Dict[str, 
         return {"status": "erro", "mensagem": "Sessão não associada a um apartamento válido."}
 
     with get_db_connection() as conn:
-        # 1. Valida se a área existe
-        cur = conn.execute("SELECT id, nome, taxa FROM areas WHERE id = ?", (area,))
-        area_row = cur.fetchone()
+        # 1. Valida se a área existe (tolerante a nome legível vs. slug — ver _resolver_area)
+        area_row = _resolver_area(conn, area)
         if not area_row:
             return {"status": "erro", "mensagem": f"Área '{area}' não encontrada."}
 
+        area_id = area_row["id"]
         area_nome = area_row["nome"]
         taxa = float(area_row["taxa"])
 
         # 2. Pré-validação rápida de disponibilidade
-        cur = conn.execute("SELECT COUNT(1) FROM reservas WHERE area = ? AND data = ?", (area, data))
+        cur = conn.execute("SELECT COUNT(1) FROM reservas WHERE area = ? AND data = ?", (area_id, data))
         if cur.fetchone()[0] > 0:
             return {
                 "status": "indisponivel",
@@ -94,7 +124,7 @@ def reservar_area(area: str, data: str, tool_context: ToolContext) -> Dict[str, 
             if conf is None:
                 tool_context.request_confirmation(
                     hint=f"Reserva do {area_nome} para {data} sujeita à taxa de R$ {taxa:.2f}.",
-                    payload={"acao": "reservar_area", "detalhes": {"area": area, "data": data}},
+                    payload={"acao": "reservar_area", "detalhes": {"area": area_id, "data": data}},
                 )
                 return {
                     "status": "pendente_confirmacao",
@@ -116,13 +146,13 @@ def reservar_area(area: str, data: str, tool_context: ToolContext) -> Dict[str, 
             )
             conn.execute(
                 "INSERT INTO reservas (codigo, apartamento, area, data) VALUES (?, ?, ?, ?)",
-                (codigo, apartamento, area, data),
+                (codigo, apartamento, area_id, data),
             )
             conn.commit()
             return {
                 "status": "sucesso",
                 "codigo": codigo,
-                "area": area,
+                "area": area_id,
                 "data": data,
                 "mensagem": f"Reserva de {area_nome} confirmada com sucesso para {data}! Código: {codigo}",
             }

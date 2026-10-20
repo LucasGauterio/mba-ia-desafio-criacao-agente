@@ -25,6 +25,29 @@ def test_verificar_disponibilidade_sem_vazamento_de_dados():
     assert "Rafael" not in str(res)
 
 
+def test_reservar_area_aceita_nome_legivel_alem_do_slug():
+    """Achado real (Fase 06, LLM com Gemini): o agente naturalmente chama a tool com o
+    nome legível ("Salão de festas") em vez do slug exato ("salao-de-festas"). Sem
+    resolução tolerante, a tool falhava com 'área não encontrada' e nunca acionava a
+    confirmação (Garantia 1) — reproduzido ao vivo em scripts/run_test_plan.sh (CT-07/08)."""
+    ctx = MagicMock()
+    ctx.state = {"apartamento": "101"}
+    ctx.tool_confirmation = None
+
+    res = reservar_area("Salão de festas", "2030-04-20", ctx)
+    assert res["status"] == "pendente_confirmacao"
+    ctx.request_confirmation.assert_called_once()
+    payload = ctx.request_confirmation.call_args.kwargs["payload"]
+    assert payload["detalhes"]["area"] == "salao-de-festas"
+
+
+def test_verificar_disponibilidade_aceita_nome_legivel_alem_do_slug():
+    """Mesmo achado da Fase 06, aplicado à consulta de disponibilidade."""
+    res = verificar_disponibilidade_area("Salão de Festas", "2030-03-16")
+    assert res["area"] == "salao-de-festas"
+    assert res["disponivel"] is False
+
+
 def test_reservar_area_sem_taxa_executa_direto():
     """RN02 / Garantia 1: Área com taxa zero (quadra) grava imediatamente sem pedir confirmação."""
     ctx = MagicMock()
