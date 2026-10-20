@@ -68,7 +68,8 @@ flowchart LR
 ### Fase 06: Execução Automatizada do TEST_PLAN.md
 - **Objetivo**: Automatizar os 18 casos de teste (CT-01 a CT-18) de [`TEST_PLAN.md`](../TEST_PLAN.md) contra a API real com o LLM real (Gemini), incluindo reinício real do processo (CT-13, Garantia 3) e disputa concorrente real (CT-14) — complementar à Fase 05, que usa apenas mocks.
 - **Entregáveis**:
-  - `scripts/run_test_plan.sh`: script de automação ponta a ponta dos 18 CTs.
-  - Correção do bug real descoberto na primeira execução (`500` em `POST /mensagens` após a primeira chamada ao Gemini no processo) — **pendente**.
-- **Status**: `dirty` — ver pendências em [`docs/phases/phase-06-test-plan-execution/validation.md`](phases/phase-06-test-plan-execution/validation.md).
+  - `scripts/run_test_plan.sh`: script de automação ponta a ponta dos 18 CTs, com espera configurável entre chamadas (`REQUEST_DELAY_SECONDS`).
+  - Bugs reais descobertos e corrigidos: formato do payload do ADK em `extrair_confirmacoes_pendentes`, resolução de área por nome legível em `reservar_area`/`verificar_disponibilidade_area`, e seleção de confirmação por `acao` em vez de índice `[0]` no próprio script.
+  - Execução completa validada: 90/90 passos OK, 0 FALHOU (2026-10-20).
+- **Status**: `clean` — ver [`docs/phases/phase-06-test-plan-execution/validation.md`](phases/phase-06-test-plan-execution/validation.md).
 - **Documentação da Fase**: [`docs/phases/phase-06-test-plan-execution/phase-06-test-plan-execution.md`](phases/phase-06-test-plan-execution/phase-06-test-plan-execution.md)

@@ -22,6 +22,6 @@ Bibliotecas decididas nesta fase: ver [`library-refs.md`](library-refs.md).
 - [x] CT-01 a CT-12 validados com sucesso contra a API real em pelo menos uma execução cada.
 - [x] CT-13 (reinício real do processo) validado com sucesso: contagem de eventos preservada, dados de domínio intactos, e `POST /mensagens` voltou a funcionar após o restart — evidência real da Garantia 3.
 - [x] CT-14 (disputa concorrente real) validado com sucesso após corrigir o `wait` sem argumentos do próprio script: uma sessão recebeu `sucesso` (código novo gerado), a outra `"já está ocupado"` — exatamente o comportamento esperado da Garantia 5 sob concorrência real.
-- [x] Bug real de formato do ADK (`toolConfirmation.payload`) identificado, corrigido e coberto por teste mockado fiel ao formato real (31/31 testes da suíte continuam passando).
+- [x] Bug real de formato do ADK (`toolConfirmation.payload`) identificado, corrigido e coberto por teste mockado fiel ao formato real (suíte mockada passando 100% — 33/33 após as 2 asserções de resolução de área adicionadas no SI seguinte).
 - [x] Bug real de resolução de área (`"salão de festas"` vs. `"salao-de-festas"`) identificado numa execução completa real, corrigido em `src/aurora/tools.py#_resolver_area`, e revalidado ao vivo isoladamente.
 - [x] **Execução completa 18/18 confirmada**: 90/90 passos OK, 0 FALHOU, incluindo CT-13 e CT-14 contra a API real.
